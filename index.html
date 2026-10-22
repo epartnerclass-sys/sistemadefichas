@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sistema de Fichas - Gestión de Aula</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        celeste: '#38bdf8', 
+                        celesteBorder: '#0284c7', 
+                        amarillo: '#facc15', 
+                        amarilloBorder: '#ca8a04', 
+                        verde: '#22c55e',
+                        verdeBorder: '#16a34a',
+                        rojo: '#ef4444',
+                        rojoBorder: '#dc2626',
+                        grisClaro: '#f3f4f6', 
+                        grisMedio: '#e5e7eb', 
+                        grisBorde: '#d1d5db', 
+                        grisOscuro: '#9ca3af', 
+                        textoOscuro: '#1f2937', 
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            overflow-x: hidden;
+            background-color: #f8fafc;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+
+        .modal-enter { transform: translateY(0) !important; opacity: 1 !important; pointer-events: auto !important; }
+        .modal-leave { transform: translateY(120%) !important; opacity: 0 !important; pointer-events: none !important; }
+
+        .modal-content-scroll::-webkit-scrollbar { display: none; }
+        .modal-content-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @keyframes bounceIn {
+            0% { transform: scale(0.9); opacity: 0; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-bounce-in { animation: bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        @keyframes popScore {
+            0% { transform: scale(1) translateY(0); opacity: 1; }
+            50% { transform: scale(1.5) translateY(-20px); opacity: 1; }
+            100% { transform: scale(1) translateY(-40px); opacity: 0; }
+        }
+        .animate-pop { animation: popScore 0.8s ease-out forwards; pointer-events: none; }
+    </style>
+</head>
+<body class="font-sans text-textoOscuro antialiased flex flex-col min-h-screen relative">
+
+    <!-- Header Fijo -->
+    <header class="fixed top-0 left-0 w-full bg-white z-40 shadow-sm border-b-4 border-grisMedio">
+        <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-celeste border-2 border-celesteBorder rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                    <span class="text-2xl">🏫</span>
+                </div>
+                <div>
+                    <h1 class="font-black text-lg leading-tight text-textoOscuro">Gestión de Aula</h1>
+                    <p class="text-[11px] text-amarilloBorder font-black uppercase tracking-widest mt-0.5 flex items-center gap-1">
+                        <span>✨</span> Sistema de Fichas
+                    </p>
+                </div>
+            </div>
+            <!-- Botón Opciones / Reset -->
+            <button onclick="confirmReset()" class="w-10 h-10 bg-grisClaro border-2 border-grisBorde rounded-xl flex items-center justify-center text-grisOscuro hover:bg-grisMedio active:scale-95 transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-3xl mx-auto w-full px-4 pt-[90px] pb-10 flex flex-col relative z-10">
+        
+        <div class="flex justify-between items-end mb-4 px-1">
+            <h2 class="text-sm font-black uppercase tracking-wider text-grisOscuro">Mis Estudiantes</h2>
+            <span class="text-xs font-bold text-celesteBorder bg-celeste/10 px-2 py-1 rounded-md" id="student-count">0 en lista</span>
+        </div>
+
+        <!-- Cuadrícula de Estudiantes -->
+        <div id="students-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4 pb-6">
+            <!-- JS Inyecta tarjetas aquí -->
+        </div>
+
+    </main>
+
+    <!-- Pie de página (Footer) -->
+    <footer class="w-full text-center pb-8 pt-4 mt-auto relative z-10">
+        <p class="text-xs font-bold text-grisOscuro uppercase tracking-wider">Desarrollado para Proyecto Nosotros</p>
+        <p class="text-[10px] font-medium text-grisOscuro/80 mt-1">Esp. Maria Esther Espinoza todos los derechos reservados &copy;</p>
+    </footer>
+
+    <!-- Modal del Estudiante -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-gray-900/80 z-[60] hidden transition-opacity duration-300 opacity-0 backdrop-blur-sm" onclick="closeAllModals()"></div>
+
+    <div id="student-modal" class="fixed bottom-0 sm:bottom-4 inset-x-0 mx-auto w-full sm:w-[92%] max-w-lg h-[90vh] sm:h-auto sm:max-h-[90vh] bg-white sm:rounded-[36px] rounded-t-[36px] overflow-hidden z-[70] transform modal-leave transition-all duration-300 ease-out flex flex-col shadow-2xl border-t-4 sm:border-4 border-grisBorde">
+        
+        <div class="w-full flex justify-center pt-3 pb-1 cursor-pointer shrink-0" onclick="closeAllModals()">
+            <div class="w-16 h-2 bg-grisBorde rounded-full"></div>
+        </div>
+        
+        <button onclick="closeAllModals()" class="absolute top-5 right-5 w-10 h-10 flex items-center justify-center bg-grisClaro border-2 border-grisBorde text-textoOscuro rounded-full hover:bg-grisMedio transition-colors z-10 active:scale-95">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+
+        <!-- Cabecera del Alumno -->
+        <div class="px-6 pt-2 pb-4 border-b-2 border-grisClaro shrink-0 flex items-center gap-4">
+            <div id="modal-avatar" class="w-16 h-16 bg-celeste/20 border-4 border-celeste rounded-2xl flex items-center justify-center text-3xl shadow-sm">👦🏽</div>
+            <div class="flex-1 pr-8">
+                <h2 id="modal-name" class="text-2xl font-black text-textoOscuro leading-tight truncate">Nombre</h2>
+                <div class="inline-flex items-center gap-1.5 mt-1 bg-amarillo border-2 border-amarilloBorder px-3 py-1 rounded-full shadow-sm">
+                    <span class="text-sm">✨</span>
+                    <span id="modal-points" class="font-black text-sm text-textoOscuro">0 Fichas</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 modal-content-scroll overflow-y-auto bg-grisClaro/30">
+            
+            <div class="p-6 space-y-6">
+                
+                <!-- Conductas Positivas -->
+                <div>
+                    <h3 class="text-xs font-black uppercase tracking-wider text-verdeBorder mb-3 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-verde"></span> Sumar Puntos
+                    </h3>
+                    <div class="grid grid-cols-1 gap-2" id="positive-actions">
+                        <!-- JS Inyecta -->
+                    </div>
+                </div>
+
+                <!-- Conductas Negativas -->
+                <div>
+                    <h3 class="text-xs font-black uppercase tracking-wider text-rojoBorder mb-3 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-rojo"></span> Restar Puntos
+                    </h3>
+                    <div class="grid grid-cols-1 gap-2" id="negative-actions">
+                        <!-- JS Inyecta -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Botón Recompensas -->
+        <div class="w-full bg-white px-6 pb-6 pt-4 border-t-2 border-grisClaro shrink-0">
+            <button onclick="openRewards()" class="w-full py-4 rounded-2xl font-black text-lg transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 bg-amarillo text-textoOscuro border-4 border-amarilloBorder shadow-[0_4px_0_#ca8a04]">
+                🎁 Canjear Recompensas
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Recompensas (Tienda) -->
+    <div id="rewards-modal" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm bg-white border-4 border-grisBorde rounded-3xl p-0 z-[80] shadow-2xl hidden opacity-0 transition-opacity duration-300 flex flex-col overflow-hidden max-h-[80vh]">
+        <div class="bg-celeste p-5 text-center relative border-b-4 border-celesteBorder">
+            <button onclick="closeRewards()" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-white/20 border-2 border-white/40 text-white rounded-full active:scale-95">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <h3 class="text-xl font-black text-white">Tienda de Fichas</h3>
+            <p class="text-sm font-bold text-white/90 mt-1" id="store-student-name">Para Alumno</p>
+        </div>
+        <div class="p-5 overflow-y-auto flex-1 bg-grisClaro/30 space-y-3" id="rewards-list">
+            <!-- JS Inyecta -->
+        </div>
+    </div>
+
+    <!-- Feedback Flotante (Toast) -->
+    <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 bg-textoOscuro text-white px-6 py-3 rounded-full font-bold text-sm shadow-xl z-[100] flex items-center gap-2 transition-all duration-300 -translate-y-20 opacity-0 pointer-events-none">
+        <span id="toast-icon">✅</span>
+        <span id="toast-msg">Mensaje</span>
+    </div>
+
+    <script>
+        // BASE DE DATOS INICIAL (Se sobreescribe si hay guardado en LocalStorage)
+        // Puedes agregar o modificar alumnos aquí directamente
+        const defaultStudents = [
+            { id: 1, name: "Juan Pérez", points: 0, avatar: "👦🏻" },
+            { id: 2, name: "María López", points: 0, avatar: "👧🏽" },
+            { id: 3, name: "Pedro Gómez", points: 0, avatar: "👦🏼" },
+            { id: 4, name: "Lucía Fernández", points: 0, avatar: "👧🏻" },
+            { id: 5, name: "Mateo Silva", points: 0, avatar: "👦🏽" },
+            { id: 6, name: "Sofía Martínez", points: 0, avatar: "👧🏼" },
+            { id: 7, name: "Valentino Díaz", points: 0, avatar: "👦🏻" },
+            { id: 8, name: "Camila Ruiz", points: 0, avatar: "👧🏽" },
+            { id: 9, name: "Benjamín Sosa", points: 0, avatar: "👦🏾" },
+            { id: 10, name: "Martina Vega", points: 0, avatar: "👧🏻" },
+            { id: 11, name: "Joaquín Ríos", points: 0, avatar: "👦🏼" },
+            { id: 12, name: "Isabella Castro", points: 0, avatar: "👧🏾" },
+        ];
+
+        // CONFIGURACIÓN DE CONDUCTAS Y RECOMPENSAS
+        const behaviors = {
+            positive: [
+                { id: 'p1', name: "Participación activa", points: 5, icon: "🙋🏽‍♂️" },
+                { id: 'p2', name: "Escucha con atención", points: 5, icon: "👂" },
+                { id: 'p3', name: "Ayudó a un compañero", points: 10, icon: "🤝" },
+                { id: 'p4', name: "Terminó la tarea en clase", points: 10, icon: "✅" }
+            ],
+            negative: [
+                { id: 'n1', name: "Deambular por el aula", points: -5, icon: "🚶🏽‍♂️" },
+                { id: 'n2', name: "Molestar a un compañero", points: -5, icon: "⚠️" },
+                { id: 'n3', name: "Hablar fuera de turno", points: -2, icon: "💬" }
+            ]
+        };
+
+        const rewards = [
+            { id: 'r1', name: "5 min. más de recreo", cost: 30, icon: "⏱️" },
+            { id: 'r2', name: "No llevar tarea a casa", cost: 50, icon: "🎒" },
+            { id: 'r3', name: "Elegir juego del viernes", cost: 80, icon: "🎲" },
+            { id: 'r4', name: "Sentarse con un amigo", cost: 40, icon: "🪑" }
+        ];
+
+        let students = [];
+        let currentStudentId = null;
+
+        // INICIALIZACIÓN
+        function initApp() {
+            loadData();
+            renderGrid();
+            renderBehaviors();
+            document.getElementById('student-count').innerText = students.length + " en lista";
+        }
+
+        // RENDERIZADO CUADRÍCULA
+        function renderGrid() {
+            const grid = document.getElementById('students-grid');
+            grid.innerHTML = '';
+
+            students.forEach(student => {
+                // Colores dinámicos basados en puntos
+                let bgClass = "bg-white border-grisBorde";
+                let textClass = "text-grisOscuro";
+                if(student.points > 0) {
+                    bgClass = "bg-white border-celesteBorder";
+                    textClass = "text-celesteBorder";
+                }
+
+                grid.innerHTML += `
+                    <div onclick="openStudent(${student.id})" class="relative bg-white border-4 ${bgClass} rounded-2xl p-3 flex flex-col items-center text-center cursor-pointer active:scale-95 transition-all shadow-sm hover:shadow-md">
+                        <div class="w-12 h-12 bg-grisClaro rounded-full flex items-center justify-center text-2xl mb-2 border-2 border-grisBorde/50">
+                            ${student.avatar}
+                        </div>
+                        <h3 class="font-bold text-textoOscuro text-xs sm:text-sm leading-tight line-clamp-2 w-full mb-2 h-8 flex items-center justify-center">${student.name}</h3>
+                        <div class="w-full bg-grisClaro border-2 border-grisBorde rounded-lg py-1 flex items-center justify-center gap-1">
+                            <span class="text-[10px]">✨</span>
+                            <span class="font-black text-xs ${student.points > 0 ? 'text-amarilloBorder' : 'text-grisOscuro'}">${student.points}</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // RENDERIZADO BOTONES ACCIÓN
+        function renderBehaviors() {
+            const posContainer = document.getElementById('positive-actions');
+            const negContainer = document.getElementById('negative-actions');
+            posContainer.innerHTML = '';
+            negContainer.innerHTML = '';
+
+            behaviors.positive.forEach(b => {
+                posContainer.innerHTML += `
+                    <button onclick="applyPoints(${b.points}, '${b.name}', event)" class="w-full flex items-center justify-between bg-white border-2 border-verde/30 p-3 rounded-xl hover:bg-verde/10 active:scale-95 transition-all text-left">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl">${b.icon}</span>
+                            <span class="font-bold text-sm text-textoOscuro">${b.name}</span>
+                        </div>
+                        <span class="font-black text-verdeBorder bg-verde/20 px-2 py-1 rounded-md text-xs">+${b.points}</span>
+                    </button>
+                `;
+            });
+
+            behaviors.negative.forEach(b => {
+                negContainer.innerHTML += `
+                    <button onclick="applyPoints(${b.points}, '${b.name}', event)" class="w-full flex items-center justify-between bg-white border-2 border-rojo/30 p-3 rounded-xl hover:bg-rojo/10 active:scale-95 transition-all text-left">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl">${b.icon}</span>
+                            <span class="font-bold text-sm text-textoOscuro">${b.name}</span>
+                        </div>
+                        <span class="font-black text-rojoBorder bg-rojo/20 px-2 py-1 rounded-md text-xs">${b.points}</span>
+                    </button>
+                `;
+            });
+        }
+
+        // RENDERIZADO TIENDA
+        function renderRewardsGrid(studentPoints) {
+            const container = document.getElementById('rewards-list');
+            container.innerHTML = '';
+
+            rewards.forEach(r => {
+                const canAfford = studentPoints >= r.cost;
+                const btnClass = canAfford 
+                    ? "bg-white border-celesteBorder shadow-[0_4px_0_#0284c7] active:scale-95 text-textoOscuro" 
+                    : "bg-grisClaro border-grisBorde text-grisOscuro opacity-70";
+                
+                const iconClass = canAfford ? "bg-celeste/20 text-celesteBorder" : "bg-grisMedio text-grisOscuro";
+
+                container.innerHTML += `
+                    <button ${canAfford ? `onclick="redeemReward(${r.cost}, '${r.name}')"` : ''} class="w-full flex items-center p-3 rounded-2xl border-4 transition-all text-left ${btnClass}">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 ${iconClass} border-2 border-transparent mr-3">
+                            ${r.icon}
+                        </div>
+                        <div class="flex-1 pr-2">
+                            <h4 class="font-bold text-sm leading-tight">${r.name}</h4>
+                        </div>
+                        <div class="shrink-0 bg-amarillo border-2 border-amarilloBorder rounded-lg px-2 py-1 flex items-center gap-1 shadow-sm">
+                            <span class="text-[10px]">✨</span>
+                            <span class="font-black text-xs">${r.cost}</span>
+                        </div>
+                    </button>
+                `;
+            });
+        }
+
+        // LÓGICA DE PUNTOS
+        function applyPoints(delta, reason, event) {
+            if(currentStudentId === null) return;
+            
+            let student = students.find(s => s.id === currentStudentId);
+            
+            // Aplicar puntos (Evita que queden en negativo)
+            student.points += delta;
+            if(student.points < 0) student.points = 0; 
+            
+            saveData();
+            updateModalUI(student);
+            renderGrid();
+
+            // Animación y feedback
+            showToast(delta > 0 ? `+${delta} ${reason}` : `${delta} ${reason}`, delta > 0 ? "⭐" : "⚠️");
+            
+            // Animación flotante sobre el botón tocado
+            if(event) {
+                const floater = document.createElement('div');
+                floater.innerText = delta > 0 ? `+${delta}` : `${delta}`;
+                floater.className = `absolute font-black text-2xl animate-pop ${delta > 0 ? 'text-verdeBorder' : 'text-rojoBorder'} pointer-events-none drop-shadow-md z-50`;
+                floater.style.left = `${event.clientX}px`;
+                floater.style.top = `${event.clientY - 20}px`;
+                document.body.appendChild(floater);
+                setTimeout(() => floater.remove(), 800);
+            }
+        }
+
+        function redeemReward(cost, rewardName) {
+            if(currentStudentId === null) return;
+            let student = students.find(s => s.id === currentStudentId);
+            
+            if(student.points >= cost) {
+                student.points -= cost;
+                saveData();
+                updateModalUI(student);
+                renderGrid();
+                renderRewardsGrid(student.points);
+                
+                closeRewards();
+                setTimeout(() => {
+                    closeAllModals();
+                    showToast(`¡Canjeado: ${rewardName}!`, "🎁");
+                }, 300);
+            }
+        }
+
+        // CONTROL DE INTERFAZ
+        function openStudent(id) {
+            currentStudentId = id;
+            let student = students.find(s => s.id === id);
+            
+            document.getElementById('modal-avatar').innerText = student.avatar;
+            document.getElementById('modal-name').innerText = student.name;
+            updateModalUI(student);
+
+            document.getElementById('modal-backdrop').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('modal-backdrop').classList.remove('opacity-0');
+                var modal = document.getElementById('student-modal');
+                modal.classList.remove('modal-leave');
+                modal.classList.add('modal-enter');
+            }, 10);
+        }
+
+        function updateModalUI(student) {
+            document.getElementById('modal-points').innerText = `${student.points} Fichas`;
+            
+            // Animación de pulso en los puntos
+            const pointsBadge = document.getElementById('modal-points').parentElement;
+            pointsBadge.classList.remove('animate-bounce-in');
+            void pointsBadge.offsetWidth;
+            pointsBadge.classList.add('animate-bounce-in');
+        }
+
+        function openRewards() {
+            let student = students.find(s => s.id === currentStudentId);
+            document.getElementById('store-student-name').innerText = `Canjeando para ${student.name.split(' ')[0]}`;
+            renderRewardsGrid(student.points);
+            
+            document.getElementById('rewards-modal').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('rewards-modal').classList.remove('opacity-0');
+            }, 10);
+        }
+
+        function closeRewards() {
+            document.getElementById('rewards-modal').classList.add('opacity-0');
+            setTimeout(() => {
+                document.getElementById('rewards-modal').classList.add('hidden');
+            }, 300);
+        }
+
+        function closeAllModals() {
+            closeRewards();
+            var modal = document.getElementById('student-modal');
+            modal.classList.remove('modal-enter');
+            modal.classList.add('modal-leave');
+
+            document.getElementById('modal-backdrop').classList.add('opacity-0');
+            
+            setTimeout(() => {
+                document.getElementById('modal-backdrop').classList.add('hidden');
+                currentStudentId = null;
+            }, 300);
+        }
+
+        function showToast(msg, icon) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            document.getElementById('toast-icon').innerText = icon;
+            
+            toast.classList.remove('-translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('-translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+
+        function confirmReset() {
+            if(confirm("¿Estás seguro que deseas reiniciar las fichas de TODOS los estudiantes a 0? Esto suele hacerse al inicio de una nueva semana.")) {
+                students.forEach(s => s.points = 0);
+                saveData();
+                renderGrid();
+                showToast("Fichas reiniciadas", "🔄");
+            }
+        }
+
+        // SISTEMA DE GUARDADO (LocalStorage)
+        function saveData() {
+            localStorage.setItem('fichasAulaData', JSON.stringify(students));
+        }
+
+        function loadData() {
+            const savedData = localStorage.getItem('fichasAulaData');
+            if (savedData) {
+                students = JSON.parse(savedData);
+            } else {
+                students = JSON.parse(JSON.stringify(defaultStudents)); // Clonar base
+            }
+        }
+
+        // INICIAR
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+</html>
